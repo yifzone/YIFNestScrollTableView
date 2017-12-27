@@ -17,8 +17,8 @@
 {
     self = [super initWithFrame:frame style:style];
     if (self) {
-        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(didMainTableViewArrivedTopNotification:) name:DidMainTableViewArrivedTopNotificationString object:nil];
-        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(didSubTableViewArrivedTopNotification:) name:DidSubTableViewArrivedTopNotificationString object:nil];
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(didMainTableViewScrollStateChangedNotification:) name:DidMainTableViewScrollStateChangedNotificationString object:nil];
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(didSubTableViewScrollStateChangedNotification:) name:DidSubTableViewScrollStateChangedNotificationString object:nil];
     }
     
     return self;
@@ -29,7 +29,22 @@
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
+- (void)setContentOffset:(CGPoint)contentOffset animated:(BOOL)animated
+{
+    if (contentOffset.y >= 0) {
+        self.canScroll = YES;
+    }
+    
+    [super setContentOffset:contentOffset animated:animated];
+}
+
 #pragma mark - setter
+- (void)setCanScroll:(BOOL)canScroll
+{
+    _canScroll = canScroll;
+    [[NSNotificationCenter defaultCenter] postNotificationName:DidSubTableViewScrollStateChangedNotificationString object:@(canScroll)];
+}
+
 - (void)setDelegate:(id<UITableViewDelegate>)delegate
 {
     _adapterDelegate = delegate;
@@ -39,7 +54,7 @@
 #pragma mark - 消息转发
 - (BOOL)respondsToSelector:(SEL)aSelector
 {
-    if ([self.adapterDelegate respondsToSelector:aSelector]) {
+    if (self != self.adapterDelegate && [self.adapterDelegate respondsToSelector:aSelector]) {
         return YES;
     }
     
@@ -66,20 +81,24 @@
     if (scrollView.contentOffset.y <= 0) {
         if (self.canScroll) {
             self.canScroll = NO;
-            [[NSNotificationCenter defaultCenter] postNotificationName:DidSubTableViewArrivedTopNotificationString object:nil];
         }
     }
 }
 
 #pragma mark - notifycation
-- (void)didMainTableViewArrivedTopNotification:(NSNotification *)notification
+- (void)didMainTableViewScrollStateChangedNotification:(NSNotification *)notification
 {
-    self.canScroll = YES;
+    NSNumber *state = notification.object;
+    _canScroll = !(state.boolValue);
 }
 
-- (void)didSubTableViewArrivedTopNotification:(NSNotification *)notification
+- (void)didSubTableViewScrollStateChangedNotification:(NSNotification *)notification
 {
-    //子view响应该消息将自己滚动到顶部
-    self.contentOffset = CGPointZero;
+    NSNumber *state = notification.object;
+    _canScroll = state.boolValue;
+    if (!state.boolValue) {
+        //子view响应该消息将自己滚动到顶部
+        self.contentOffset = CGPointZero;
+    }
 }
 @end

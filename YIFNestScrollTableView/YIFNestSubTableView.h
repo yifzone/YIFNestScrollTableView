@@ -9,5 +9,6 @@
 #import "YIFNestBaseTableView.h"
 
 @interface YIFNestSubTableView : YIFNestBaseTableView
+@property (nonatomic, assign) BOOL canScroll;
 @property (nonatomic, assign) NSInteger index;
 @end

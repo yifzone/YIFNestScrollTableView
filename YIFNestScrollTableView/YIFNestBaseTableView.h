@@ -12,9 +12,8 @@
 #define YIF_SCREEN_HEIGHT [[UIScreen mainScreen] bounds].size.height
 #define YIF_SCREEN_WIDTH [[UIScreen mainScreen] bounds].size.width
 
-#define DidSubTableViewArrivedTopNotificationString @"DidSubTableViewArrivedTopNotificationString"
-#define DidMainTableViewArrivedTopNotificationString @"DidMainTableViewArrivedTopNotificationString"
+#define DidSubTableViewScrollStateChangedNotificationString @"DidSubTableViewScrollStateChangedNotificationString"
+#define DidMainTableViewScrollStateChangedNotificationString @"DidMainTableViewScrollStateChangedNotificationString"
 
 @interface YIFNestBaseTableView : UITableView
-@property (nonatomic, assign) BOOL canScroll;
 @end
