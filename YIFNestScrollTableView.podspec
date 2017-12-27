@@ -5,7 +5,7 @@ Pod::Spec.new do |s|
   s.summary      = "nest scroll tableView"
 
   s.description  = <<-DESC
-                   nest scroll tableView
+                   YIFNestScrollTableView used on iOS, which implement by Objective-C
                    DESC
 
   s.homepage     = "https://github.com/yifzone/YIFNestScrollTableView"
