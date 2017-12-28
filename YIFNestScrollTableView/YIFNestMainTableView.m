@@ -14,6 +14,7 @@
 @property (nonatomic, strong) NSMutableDictionary *subTableViewDic; //index:subTableView
 @property (nonatomic, assign) CGFloat maxOffsetY;
 @property (nonatomic, assign) BOOL canScroll;
+@property (nonatomic, assign) NSInteger currentVisibleIndex;
 @end
 
 @implementation YIFNestMainTableView
@@ -54,6 +55,11 @@
 {
     [super reloadData];
     [self.horizontalCollectionView reloadData];
+    [self layoutIfNeeded];
+    [self.horizontalCollectionView layoutIfNeeded];
+    
+    //子控件调整，模拟发出一条滚动消息，让view滚动至正确位置
+    [self scrollViewDidScroll:self];
 }
 
 - (void)setContentOffset:(CGPoint)contentOffset animated:(BOOL)animated
@@ -89,10 +95,13 @@
     CGPoint offset = CGPointMake(index * YIF_SCREEN_WIDTH, 0);
     [self.horizontalCollectionView setContentOffset:offset animated:animated];
     
-    __weak typeof(self) weakSelf = self;
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        [weakSelf scrollViewDidEndScroll:weakSelf.horizontalCollectionView];
-    });
+    if (!animated) {
+        //没有滚动动画的情况下不会触发scrollview的滚动停止事件
+        __weak typeof(self) weakSelf = self;
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            [weakSelf scrollViewDidEndScroll:weakSelf.horizontalCollectionView];
+        });
+    }
 }
 
 - (void)scrollMainViewToMaxOffset:(BOOL)animated
@@ -128,6 +137,8 @@
 {
     if (!_horizontalScrollCell) {
         _horizontalScrollCell = [[UITableViewCell alloc] initWithFrame:CGRectZero];
+        _horizontalScrollCell.selectionStyle = UITableViewCellSelectionStyleNone;
+        
         UICollectionViewFlowLayout *layout = [UICollectionViewFlowLayout new];
         layout.scrollDirection = UICollectionViewScrollDirectionHorizontal;
         layout.minimumLineSpacing = 0;
@@ -204,12 +215,25 @@
     [self scrollViewDidEndScroll:scrollView];
 }
 
+- (void)scrollViewDidEndScrollingAnimation:(UIScrollView *)scrollView
+{
+    [self scrollViewDidEndScroll:scrollView];
+}
+
 - (void)scrollViewDidEndScroll:(UIScrollView *)scrollView
 {
+    if (scrollView != self.horizontalCollectionView) {
+        return;
+    }
+    
     //通知外部将要加载的子view
-    UICollectionViewCell *visibleCell = [self.horizontalCollectionView visibleCells].firstObject;
-    NSIndexPath *indexPath = [self.horizontalCollectionView indexPathForCell:visibleCell];
-    NSNumber *indexKey = [NSNumber numberWithInteger:indexPath.row];
+    NSInteger willVisibleIndex = scrollView.contentOffset.x / YIF_SCREEN_WIDTH;
+    if (self.currentVisibleIndex == willVisibleIndex) {
+        //当前已经是该view不响应
+        return;
+    }
+    self.currentVisibleIndex = willVisibleIndex;
+    NSNumber *indexKey = [NSNumber numberWithInteger:willVisibleIndex];
     YIFNestSubTableView *subTableView = [self.subTableViewDic objectForKey:indexKey];
     if ([self.nestDelegate respondsToSelector:@selector(mainTableView:willLoadSubView:)]) {
         [self.nestDelegate mainTableView:self willLoadSubView:subTableView];
@@ -292,6 +316,7 @@
     }
     
     UICollectionViewCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:@"UICollectionViewCell" forIndexPath:indexPath];
+    cell.selected = NO;
     [[cell subviews] makeObjectsPerformSelector:@selector(removeFromSuperview)];
     [cell addSubview:subTableView];
     subTableView.frame = CGRectMake(0, 0, CGRectGetWidth(self.horizontalCollectionView.bounds), CGRectGetHeight(self.horizontalCollectionView.bounds));
